@@ -2,7 +2,10 @@ import requests
 from bs4 import BeautifulSoup
 import csv
 import openai
+import imdb
 
+
+ia = imdb.IMDb()
 
 
 
@@ -36,6 +39,29 @@ def scrape_letterboxd(url):
         })
 
     return movie_data
+
+
+def get_movie_details(movie_title):
+    # Use IMDbPY to search for the movie by title
+    search_results = ia.search_movie(movie_title)
+
+    if search_results:
+        # Get the first search result (most likely match)
+        movie_id = search_results[0].movieID
+
+        # Use the movie ID to retrieve detailed movie information
+        movie = ia.get_movie(movie_id)
+
+        # Extract desired details from the movie object
+        year = str(movie.get('year'))
+        genres = ', '.join(movie.get('genres', []))
+        rating = str(movie.get('rating'))
+        cast = ', '.join(actor['name'] for actor in movie.get('cast', [])[:5])  # Get top 5 cast members
+        director = ', '.join(director['name'] for director in movie.get('directors', []))
+
+        return year, genres, rating, cast, director
+    else:
+        return "N/A", "N/A", "N/A", "N/A", "N/A"
 
 
 
@@ -78,3 +104,20 @@ if __name__ == "__main__":
     description = generate_description(movie_data)
     print("\nPerson's Movie Preferences Description:")
     print(description)
+
+    # Additional step to fetch more data for each movie
+    for movie in movie_data:
+        movie_title = movie['Title']
+        year, genres, rating, cast, director = get_movie_details(movie_title)
+        movie['Year'] = year
+        movie['Genres'] = genres
+        movie['Rating'] = rating
+        movie['Cast'] = cast
+        movie['Director'] = director
+
+    # Save the updated movie_data with additional details to CSV
+    with open('letterboxd_movies_with_details.csv', mode='w', encoding='utf-8', newline='') as file:
+        fieldnames = ['Title', 'Year', 'Genres', 'Rating', 'Review', 'Cast', 'Director']
+        writer = csv.DictWriter(file, fieldnames=fieldnames)
+        writer.writeheader()
+        writer.writerows(movie_data)
