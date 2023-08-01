@@ -1,0 +1,47 @@
+import requests
+from bs4 import BeautifulSoup
+import csv
+
+
+def scrape_letterboxd(url):
+    response = requests.get(url)
+    soup = BeautifulSoup(response.content, 'html.parser')
+    movie_containers = soup.find_all('li', class_='film-detail')
+    movie_data = []
+
+    for container in movie_containers:
+        title = container.find('h2').text.strip()
+        rating = container.find('span', class_='rating').text.strip()
+
+        # Use conditional check to handle missing 'year' element
+        year = container.find('small').text.strip()
+
+
+        # Use conditional check to handle missing 'review-text' element
+        review_element = container.find('div', class_='review-text')
+        review = review_element.text.strip() if review_element else "N/A"
+
+        movie_data.append({
+            'Title': title,
+            'Year': year,
+            'Rating': rating,
+            'Review': review
+        })
+
+    return movie_data
+
+
+if __name__ == "__main__":
+    username = 'ADDUSERNAME'
+    url = f'https://letterboxd.com/{username}/films/reviews/'
+
+    movie_data = scrape_letterboxd(url)
+
+    with open('letterboxd_movies.csv', mode='w', encoding='utf-8', newline='') as file:
+        fieldnames = ['Title', 'Year', 'Rating', 'Review']
+        writer = csv.DictWriter(file, fieldnames=fieldnames)
+        writer.writeheader()
+        writer.writerows(movie_data)
+
+    print("Data scraped and saved successfully.")
+
